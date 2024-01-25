@@ -1,0 +1,32 @@
+POST http://localhost:3000/register/
+###
+
+POST http://localhost:3000/login/
+###
+
+GET http://localhost:3000/user/tweets/feed/
+###
+
+GET http://localhost:3000/user/following/
+###
+
+GET http://localhost:3000/user/followers/
+###
+
+GET http://localhost:3000/tweets/:tweetId/
+###
+
+GET http://localhost:3000/tweets/:tweetId/likes/
+###
+
+GET http://localhost:3000/tweets/:tweetId/replies/
+###
+
+GET http://localhost:3000/user/tweets/
+###
+
+POST http://localhost:3000/user/tweets/
+###
+
+DELETE http://localhost:3000/tweets/:tweetId/
+###
