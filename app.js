@@ -4,25 +4,21 @@ const sqlite3 = require('sqlite3')
 const path = require('path')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+
+const dbPath = path.join(__dirname, 'twitterClone.db')
 const app = express()
 app.use(express.json())
 
-const dbPath = path.join(__dirname, 'twitterClone.db')
 let db = null
 
 const initializeDBAndServer = async () => {
-  try {
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database,
-    })
-    app.listen(3000, () => {
-      console.log('Server is Running at localhost://3000/')
-    })
-  } catch (e) {
-    console.log(`DB Error: ${e.message}`)
-    process.exit(1)
-  }
+  db = await open({
+    filename: dbPath,
+    driver: sqlite3.Database,
+  })
+  app.listen(3000, () => {
+    console.log('Server is Running at localhost://3000/')
+  })
 }
 initializeDBAndServer()
 
@@ -41,7 +37,7 @@ app.post('/register/', async (request, response) => {
                 VALUES ('${username}', '${hashedPassword}', '${gender}', '${name}');
             `)
       response.status(200)
-      response.send('User Created Successfully')
+      response.send('User created successfully')
     } else {
       response.status(400)
       response.send('Password is too short')
@@ -114,13 +110,14 @@ app.get(
         tweet.tweet,
         tweet.date_time
       FROM
-        follower LEFT JOIN tweet ON tweet.user_id = user.user_id
+        follower LEFT JOIN tweet ON tweet.user_id = follower.following_user_id
+        LEFT JOIN user ON follower.following_user_id = user.user_id
       WHERE 
-        follower.follower_user_id = (SELECT user_id FROM user WHERE username = '${username}')
+        follower.follower_user_id = (SELECT user_id FROM user WHERE username = '${request.username}')
       ORDER BY tweet.date_time DESC
       LIMIT 4
     `)
-    response.send(latestTweets.map(item => tweetResponse(item)))
+    response.send(latestTweets.map((item) => tweetResponse(item)))
   },
 )
 
@@ -129,7 +126,7 @@ app.get('/user/following/', authenticationToken, async (request, response) => {
   const following = await db.all(`
         SELECT user.name
         FROM follower LEFT JOIN user ON follower.following_user_id = user.user_id
-        WHERE follower.follower_user_id = (SELECT user_id FROM user WHERE username = '${username}');
+        WHERE follower.follower_user_id = (SELECT user_id FROM user WHERE username = '${request.username}');
     `)
   response.send(following)
 })
@@ -139,8 +136,8 @@ app.get('/user/followers/', authenticationToken, async (request, response) => {
   const followers = await db.all(`
         SELECT user.name
         FROM follower
-        LEFT JOIN user ON follower.following_user_id = user.user_id
-        WHERE follower.follower_user_id = (SELECT user_id FROM user WHERE username = '${request.username}');
+        LEFT JOIN user ON follower.follower_user_id = user.user_id
+        WHERE follower.following_user_id = (SELECT user_id FROM user WHERE username = '${request.username}');
     `)
   response.send(followers)
 })
@@ -193,7 +190,7 @@ app.get(
         SELECT user.username FROM like NATURAL JOIN user
         WHERE tweet_id = ${tweetId};
     `)
-    response.send({likes: likeBy.map(item => item.username)})
+    response.send({likes: likeBy.map((item) => item.username)})
   },
 )
 
@@ -228,7 +225,7 @@ app.get('/user/tweets/', authenticationToken, async (request, response) => {
         GROUP BY tweet.tweet_id;
     `)
   response.send(
-    myTweets.map(item => {
+    myTweets.map((item) => {
       const {date_time, ...rest} = item
       return {...rest, dateTime: date_time}
     }),
@@ -239,7 +236,7 @@ app.get('/user/tweets/', authenticationToken, async (request, response) => {
 app.post('/user/tweets/', authenticationToken, async (request, response) => {
   const {tweet} = request.body
   const {user_id} = await db.get(`
-        SELECT user_id FROM user WHERE username = '${request.user_id}';
+        SELECT user_id FROM user WHERE username = '${request.username}';
     `)
   await db.run(`
         INSERT INTO tweet(tweet, user_id)
@@ -258,7 +255,7 @@ app.delete(
         SELECT tweet_id, user_id
         FROM tweet 
         WHERE tweet_id = ${tweetId}
-        AND user_id (SELECT user_id FROM user WHERE username = '${username}');
+        AND user_id (SELECT user_id FROM user WHERE username = '${request.username}');
     `)
     if (userTweet === undefined) {
       response.status(401)
@@ -273,3 +270,4 @@ app.delete(
   },
 )
 module.exports = app
+
